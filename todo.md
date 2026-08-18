@@ -83,3 +83,11 @@
 - [x] Add logout and API health actions.
 - [x] Run frontend checks and production build.
 - [x] Commit and push the Settings workspace.
+
+# Registration and logout UX fix
+
+- [x] Inspect current AuthModal and signed-out demo fallback behavior.
+- [x] Add visible registration form and connect it to Django registration.
+- [x] Make logout show an explicit signed-out state without auto-selecting a demo identity.
+- [x] Verify registration, login, logout, and demo transitions.
+- [x] Run frontend checks and push the authentication UX fix.
