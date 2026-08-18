@@ -7,3 +7,12 @@
 - [x] Add loading, API error, and demo fallback states.
 - [x] Run type checking, production build, and browser verification.
 - [x] Save the live telemetry checkpoint.
+
+# Production readiness and CI
+
+- [x] Inspect frontend and backend components in Group_B.
+- [x] Identify current build, test, dependency, and deployment configuration.
+- [x] Run the frontend production build and checks.
+- [x] Run Django checks/build checks if a backend is present.
+- [x] Add GitHub Actions CI for available components.
+- [x] Verify CI files and repository status.
