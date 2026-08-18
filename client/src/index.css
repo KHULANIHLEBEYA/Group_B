@@ -1,0 +1,85 @@
+/* Civic Signal style: parchment canvas, ink navy shell, signal amber focus, restrained civic-tech depth. */
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+}
+
+:root {
+  --primary: #102a35;
+  --primary-foreground: #fffaf2;
+  --radius: 0.75rem;
+  --background: #f5f0e8;
+  --foreground: #182b35;
+  --card: #fbf8f3;
+  --card-foreground: #24414b;
+  --popover: #fbf8f3;
+  --popover-foreground: #24414b;
+  --secondary: #e9e2d7;
+  --secondary-foreground: #52696f;
+  --muted: #eee7dc;
+  --muted-foreground: #748184;
+  --accent: #e6a649;
+  --accent-foreground: #102a35;
+  --destructive: #b24d36;
+  --destructive-foreground: #fffaf2;
+  --border: #d9d0c2;
+  --input: #d9d0c2;
+  --ring: #e6a649;
+  --chart-1: #e6a649;
+  --chart-2: #3c8055;
+  --chart-3: #3d6da5;
+  --chart-4: #b24d36;
+  --chart-5: #102a35;
+}
+
+* { border-color: var(--border); }
+html { background: var(--background); }
+body {
+  margin: 0;
+  min-width: 320px;
+  background-color: #f5f0e8;
+  background-image: radial-gradient(rgba(24,43,53,.055) .55px, transparent .55px), linear-gradient(90deg, rgba(255,255,255,.14) 1px, transparent 1px);
+  background-size: 7px 7px, 48px 48px;
+  color: #182b35;
+  font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+button, input, select, textarea { font: inherit; }
+button { transition: transform 160ms cubic-bezier(.23,1,.32,1), background-color 180ms ease, color 180ms ease, box-shadow 180ms ease; }
+button:active { transform: scale(.98); }
+:focus-visible { outline: 3px solid rgba(230,166,73,.55); outline-offset: 3px; }
+.font-serif { font-family: "DM Serif Display", Georgia, serif; }
+.signal-label { display: flex; align-items: center; gap: 8px; color: #9a7950; font-size: 10px; font-weight: 700; letter-spacing: .19em; line-height: 1; text-transform: uppercase; }
+.signal-label::before { content: ""; display: inline-block; width: 28px; height: 1px; background: #e6a649; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; } }
