@@ -74,3 +74,12 @@
 - [x] Align category and required fields between frontend and Django.
 - [x] Verify successful request creation and useful validation errors.
 - [x] Run frontend/backend checks and push the fix.
+
+# Full Settings workspace
+
+- [x] Define profile, API, notifications, telemetry, and security sections.
+- [x] Implement the Settings page component with Civic Signal styling.
+- [x] Wire Settings navigation and active preference states.
+- [x] Add logout and API health actions.
+- [x] Run frontend checks and production build.
+- [x] Commit and push the Settings workspace.
