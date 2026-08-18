@@ -16,3 +16,12 @@
 - [x] Run Django checks/build checks if a backend is present.
 - [x] Add GitHub Actions CI for available components.
 - [x] Verify CI files and repository status.
+
+# Django backend scaffold
+
+- [x] Define the backend scope from the documented CSRMS API contract.
+- [x] Create Django project settings, URLs, and health endpoint.
+- [x] Add CSRMS models, serializers, JWT auth, and REST endpoints.
+- [x] Add backend dependency and CI checks.
+- [x] Run Django checks and frontend checks together.
+- [x] Commit and push the backend scaffold to Group_B.

@@ -50,6 +50,7 @@ jobs:
           if [ -n "$MANAGE_FILE" ]; then
             echo "present=true" >> "$GITHUB_OUTPUT"
             echo "manage_file=$MANAGE_FILE" >> "$GITHUB_OUTPUT"
+            echo "backend_dir=$(dirname "$MANAGE_FILE")" >> "$GITHUB_OUTPUT"
           else
             echo "present=false" >> "$GITHUB_OUTPUT"
             echo "No manage.py found; Django checks will be skipped."
@@ -66,10 +67,11 @@ jobs:
         if: steps.detect.outputs.present == 'true'
         shell: bash
         run: |
-          if [ -f requirements.txt ]; then
-            python -m pip install -r requirements.txt
-          elif [ -f requirements-dev.txt ]; then
-            python -m pip install -r requirements-dev.txt
+          BACKEND_DIR="${{ steps.detect.outputs.backend_dir }}"
+          if [ -f "$BACKEND_DIR/requirements.txt" ]; then
+            python -m pip install -r "$BACKEND_DIR/requirements.txt"
+          elif [ -f "$BACKEND_DIR/requirements-dev.txt" ]; then
+            python -m pip install -r "$BACKEND_DIR/requirements-dev.txt"
           else
             echo "No requirements file found; Django dependency installation was skipped."
           fi
@@ -78,5 +80,5 @@ jobs:
         if: steps.detect.outputs.present == 'true'
         shell: bash
         run: |
-          cd "$(dirname "${{ steps.detect.outputs.manage_file }}")"
+          cd "${{ steps.detect.outputs.backend_dir }}"
           python manage.py check
