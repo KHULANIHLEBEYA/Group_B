@@ -1,7 +1,7 @@
 // Civic Signal style: a warm editorial operations dashboard for visible, accountable campus service resolution.
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { CsrmsApiError, csrmsApi, tokenStore, type CsrmsRequest, type CsrmsTelemetryPoint, type CsrmsTelemetryResponse } from "@/lib/csrms-api";
+import { CsrmsApiError, csrmsApi, tokenStore, type CsrmsRequest, type CsrmsTelemetryPoint, type CsrmsTelemetryResponse, type CsrmsUser } from "@/lib/csrms-api";
 import { Area, AreaChart, CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import {
   Activity,
@@ -101,10 +101,13 @@ export default function Home() {
   const [notificationCount, setNotificationCount] = useState(0);
   const [apiError, setApiError] = useState("");
   const [showAuth, setShowAuth] = useState(false);
+  const [currentUser, setCurrentUser] = useState<CsrmsUser | null>(null);
 
   const visibleNav = navItems.filter((item) => !item.roles || item.roles.includes(role));
-  const roleName = role === "Student" ? "Naledi" : role === "Admin" ? "Thabo" : "Lerato";
+  const liveDisplayName = currentUser?.first_name || currentUser?.username;
+  const roleName = liveDisplayName ?? (role === "Student" ? "Naledi" : role === "Admin" ? "Thabo" : "Lerato");
   const roleBrief = role === "Student" ? "Track your campus requests and see what is happening next." : role === "Admin" ? "See the whole campus picture and keep the service system accountable." : "Review what needs a human hand next and keep campus moving.";
+  const isLiveSession = Boolean(currentUser);
   const filteredRequests = useMemo(
     () => (liveRequests ?? requests).filter((request) => role !== "Student" || request.source === "Student").filter((request) => `${request.title} ${request.category} ${request.location}`.toLowerCase().includes(query.toLowerCase())),
     [query, liveRequests, role],
@@ -114,6 +117,7 @@ export default function Home() {
     if (!tokenStore.access) return;
     Promise.all([csrmsApi.me(), csrmsApi.requests(), csrmsApi.dashboard(), csrmsApi.notifications()])
       .then(([user, apiItems, summary, notifications]) => {
+        setCurrentUser(user);
         setRole(user.role === "ADMIN" ? "Admin" : user.role === "STUDENT" ? "Student" : "Staff");
         setLiveRequests(apiItems.map(mapApiRequest));
         setDashboardSummary(summary);
@@ -124,13 +128,15 @@ export default function Home() {
   }, []);
 
   const handlePlaceholder = (message: string) => toast(message);
-  const cycleDemoRole = () => { const next = role === "Staff" ? "Student" : role === "Student" ? "Admin" : "Staff"; setRole(next); setSection("Overview"); toast(`Demo workspace switched to ${next}.`); };
+  const cycleDemoRole = () => { if (currentUser) { toast(`Signed in as ${currentUser.username}. Demo role switching is disabled for this live session.`); return; } const next = role === "Staff" ? "Student" : role === "Student" ? "Admin" : "Staff"; setRole(next); setSection("Overview"); toast(`Demo workspace switched to ${next}.`); };
   const handleLogin = async (username: string, password: string) => {
     try {
       const result = await csrmsApi.login(username, password);
       setShowAuth(false);
+      if (result.user) setCurrentUser(result.user);
       setRole(result.user?.role === "ADMIN" ? "Admin" : result.user?.role === "STUDENT" ? "Student" : "Staff");
       const [user, apiItems, summary, notifications] = await Promise.all([csrmsApi.me(), csrmsApi.requests(), csrmsApi.dashboard(), csrmsApi.notifications()]);
+      setCurrentUser(user);
       setRole(user.role === "ADMIN" ? "Admin" : user.role === "STUDENT" ? "Student" : "Staff");
       setLiveRequests(apiItems.map(mapApiRequest));
       setDashboardSummary(summary);
@@ -151,11 +157,11 @@ export default function Home() {
         <div className="px-5 py-6"><div className="mb-3 px-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-[#8ea3a4]">Workspace</div>
           <nav className="space-y-1">{visibleNav.map(({ label, icon: Icon }) => <button key={label} onClick={() => setSection(label)} className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm transition ${section === label ? "bg-[#e6a649] font-semibold text-[#102a35] shadow-[0_8px_20px_rgba(230,166,73,.18)]" : "text-[#d1dada] hover:bg-white/10"}`}><Icon className="h-4 w-4" />{label}{label === "Requests" && <span className="ml-auto rounded-full bg-white/15 px-2 py-0.5 text-[10px]">24</span>}</button>)}</nav>
         </div>
-        <div className="mt-auto border-t border-white/10 p-5"><button onClick={() => handlePlaceholder("Settings are ready for the API connection.")} className="mb-4 flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm text-[#d1dada] hover:bg-white/10"><Settings className="h-4 w-4" />Settings</button><button onClick={cycleDemoRole} className="flex w-full items-center gap-3 rounded-2xl bg-white/10 p-3 text-left hover:bg-white/15"><div className="grid h-9 w-9 place-items-center rounded-full bg-[#e6a649] font-semibold text-[#102a35]">{role[0]}</div><div className="min-w-0 flex-1"><div className="truncate text-sm font-semibold">{role === "Staff" ? "Lerato Mokoena" : role === "Admin" ? "Thabo Ndlovu" : "Naledi K."}</div><div className="text-xs text-[#a9b9b8]">{role} demo · switch role</div></div><ChevronDown className="h-4 w-4 text-[#a9b9b8]" /></button></div>
+        <div className="mt-auto border-t border-white/10 p-5"><button onClick={() => handlePlaceholder("Settings are ready for the API connection.")} className="mb-4 flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm text-[#d1dada] hover:bg-white/10"><Settings className="h-4 w-4" />Settings</button><button onClick={cycleDemoRole} className="flex w-full items-center gap-3 rounded-2xl bg-white/10 p-3 text-left hover:bg-white/15"><div className="grid h-9 w-9 place-items-center rounded-full bg-[#e6a649] font-semibold text-[#102a35]">{role[0]}</div><div className="min-w-0 flex-1"><div className="truncate text-sm font-semibold">{currentUser ? (currentUser.first_name || currentUser.username) : role === "Staff" ? "Lerato Mokoena" : role === "Admin" ? "Thabo Ndlovu" : "Naledi K."}</div><div className="text-xs text-[#a9b9b8]">{currentUser ? `${currentUser.username} · live session` : `${role} demo · switch role`}</div></div><ChevronDown className="h-4 w-4 text-[#a9b9b8]" /></button></div>
       </aside>
 
       <main className="lg:pl-[252px]">
-        <header className="sticky top-0 z-20 flex h-[76px] items-center justify-between border-b border-[#ddd5c8] bg-[#f5f0e8]/95 px-5 backdrop-blur-xl sm:px-8 lg:px-12"><div className="flex items-center gap-3 lg:hidden"><SignalMark small /><span className="font-serif text-xl">CSRMS</span></div><div className="hidden lg:block"><div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#9a7950]">Tuesday · 18 August 2026 · {role} workspace</div><div className="font-serif text-2xl leading-tight">Good morning, {roleName}.</div></div><div className="flex items-center gap-3"><button className="hidden h-10 items-center gap-2 rounded-xl border border-[#d9d0c2] bg-[#faf7f1] px-3 text-sm text-[#68767a] sm:flex"><Search className="h-4 w-4" />Search requests <kbd className="ml-2 rounded bg-[#eee7dc] px-1.5 py-0.5 text-[10px]">⌘K</kbd></button><button onClick={() => handlePlaceholder(notificationCount ? `You have ${notificationCount} unread notifications.` : "No unread notifications.")} className="relative grid h-10 w-10 place-items-center rounded-xl border border-[#d9d0c2] bg-[#faf7f1] text-[#45616a] hover:bg-white"><Bell className="h-4 w-4" />{notificationCount > 0 && <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[#d16848]" />}</button><button onClick={() => setShowAuth(true)} className="grid h-10 w-10 place-items-center rounded-xl bg-[#102a35] text-sm font-semibold text-white hover:bg-[#1d4250]" title="Sign in with CSRMS"><UserRound className="h-4 w-4" /></button></div></header>
+        <header className="sticky top-0 z-20 flex h-[76px] items-center justify-between border-b border-[#ddd5c8] bg-[#f5f0e8]/95 px-5 backdrop-blur-xl sm:px-8 lg:px-12"><div className="flex items-center gap-3 lg:hidden"><SignalMark small /><span className="font-serif text-xl">CSRMS</span></div><div className="hidden lg:block"><div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#9a7950]">Tuesday · 18 August 2026 · {role} workspace{isLiveSession ? " · live API" : " · demo"}</div><div className="font-serif text-2xl leading-tight">Good morning, {roleName}.</div></div><div className="flex items-center gap-3"><button className="hidden h-10 items-center gap-2 rounded-xl border border-[#d9d0c2] bg-[#faf7f1] px-3 text-sm text-[#68767a] sm:flex"><Search className="h-4 w-4" />Search requests <kbd className="ml-2 rounded bg-[#eee7dc] px-1.5 py-0.5 text-[10px]">⌘K</kbd></button><button onClick={() => handlePlaceholder(notificationCount ? `You have ${notificationCount} unread notifications.` : "No unread notifications.")} className="relative grid h-10 w-10 place-items-center rounded-xl border border-[#d9d0c2] bg-[#faf7f1] text-[#45616a] hover:bg-white"><Bell className="h-4 w-4" />{notificationCount > 0 && <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[#d16848]" />}</button><button onClick={() => setShowAuth(true)} className="grid h-10 w-10 place-items-center rounded-xl bg-[#102a35] text-sm font-semibold text-white hover:bg-[#1d4250]" title="Sign in with CSRMS"><UserRound className="h-4 w-4" /></button></div></header>
 
         <div className="mx-auto max-w-[1480px] px-5 py-7 sm:px-8 lg:px-12 lg:py-10">
           {section === "Overview" && <>

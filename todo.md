@@ -59,3 +59,11 @@
 - [x] Add http://192.168.0.250:3000 to Django CORS_ALLOWED_ORIGINS.
 - [x] Verify OPTIONS preflight for /api/auth/login/.
 - [x] Verify backend health and commit/push the configuration fix.
+
+# Authenticated identity display fix
+
+- [x] Inspect frontend user state and demo identity labels.
+- [x] Store and render the authenticated Django username/profile.
+- [x] Replace demo-only labels when live login is active.
+- [x] Run type check, production build, and verify the login flow.
+- [x] Commit and push the identity display fix.
