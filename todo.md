@@ -39,3 +39,17 @@
 - [x] Confirm Django CORS origins and backend health response.
 - [x] Test frontend-origin preflight and authenticated API requests.
 - [x] Document local Windows and deployed URL configuration.
+
+# Frontend .env.local and dev-server test
+
+- [x] Test VITE_CSRMS_API_BASE_URL with the local Django API.
+- [x] Start the Vite development server with the API environment injected.
+- [x] Verify the frontend server responds and report Windows .env.local setup.
+
+# Browser console error fixes
+
+- [x] Inspect broken manus-storage asset references and analytics script configuration.
+- [x] Replace asset URLs with repository-safe frontend asset references.
+- [x] Guard analytics loading when the endpoint is not configured.
+- [x] Run frontend type check and production build.
+- [x] Verify the corrected frontend requests and commit the fix.
