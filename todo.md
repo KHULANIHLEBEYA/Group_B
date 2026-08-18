@@ -1,8 +1,9 @@
-# Mock telemetry data
+# Live telemetry integration
 
-- [x] Define deterministic demo readings for network, water, and fire monitoring.
-- [x] Add demo/live data labeling and source context.
-- [x] Connect mock readings to the telemetry charts and summary cards.
-- [x] Verify chart rendering, tooltips, thresholds, and time-range controls.
-- [x] Run type checking and production build.
-- [x] Save the mock telemetry checkpoint.
+- [x] Define the historical telemetry endpoint and response normalization contract.
+- [x] Add typed live telemetry history loading to the CSRMS API client.
+- [x] Bind live network, water, fire, and temperature data to the charts.
+- [x] Bind latest live readings and connection state to the sensor cards.
+- [x] Add loading, API error, and demo fallback states.
+- [x] Run type checking, production build, and browser verification.
+- [x] Save the live telemetry checkpoint.

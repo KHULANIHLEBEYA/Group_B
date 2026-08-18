@@ -33,6 +33,29 @@ export type DashboardSummary = {
   [key: string]: number;
 };
 
+export type CsrmsTelemetryPoint = {
+  timestamp?: string;
+  recorded_at?: string;
+  time?: string;
+  sensor_type?: string;
+  value?: number;
+  latency_ms?: number;
+  latency?: number;
+  moisture?: number;
+  moisture_percent?: number;
+  smoke?: number;
+  smoke_level?: number;
+  temperature?: number;
+  temperature_c?: number;
+};
+
+export type CsrmsTelemetryResponse = {
+  network?: CsrmsTelemetryPoint[];
+  water?: CsrmsTelemetryPoint[];
+  fire?: CsrmsTelemetryPoint[];
+  results?: CsrmsTelemetryPoint[];
+};
+
 export type CsrmsNotification = {
   id: number;
   title?: string;
@@ -42,6 +65,7 @@ export type CsrmsNotification = {
 };
 
 const API_BASE_URL = (import.meta.env.VITE_CSRMS_API_BASE_URL || "http://127.0.0.1:8000/api").replace(/\/$/, "");
+const TELEMETRY_HISTORY_PATH = import.meta.env.VITE_CSRMS_TELEMETRY_HISTORY_PATH || "/telemetry/history/";
 const ACCESS_KEY = "csrms_access_token";
 const REFRESH_KEY = "csrms_refresh_token";
 
@@ -112,6 +136,7 @@ export const csrmsApi = {
   assignRequest: (id: number, assignedTo: number) => request<CsrmsRequest>(`/requests/${id}/assign/`, { method: "POST", body: JSON.stringify({ assigned_to: assignedTo }) }),
   addUpdate: (id: number, comment: string) => request(`/requests/${id}/updates/`, { method: "POST", body: JSON.stringify({ comment }) }),
   history: (id: number) => request(`/requests/${id}/history/`),
+  telemetryHistory: (range?: string) => { const separator = TELEMETRY_HISTORY_PATH.includes("?") ? "&" : "?"; const suffix = range ? `${separator}range=${encodeURIComponent(range.toLowerCase().replace(/\s+/g, "_"))}` : ""; return request<CsrmsTelemetryResponse>(`${TELEMETRY_HISTORY_PATH}${suffix}`); },
   telemetryNetwork: (payload: Record<string, unknown>, deviceKey: string) => request("/telemetry/network/", { method: "POST", headers: { "X-Device-Key": deviceKey }, body: JSON.stringify(payload) }, false),
   telemetryWater: (payload: Record<string, unknown>, deviceKey: string) => request("/telemetry/water/", { method: "POST", headers: { "X-Device-Key": deviceKey }, body: JSON.stringify(payload) }, false),
   telemetryFire: (payload: Record<string, unknown>, deviceKey: string) => request("/telemetry/fire/", { method: "POST", headers: { "X-Device-Key": deviceKey }, body: JSON.stringify(payload) }, false),
