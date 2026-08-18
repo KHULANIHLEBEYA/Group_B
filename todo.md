@@ -67,3 +67,10 @@
 - [x] Replace demo-only labels when live login is active.
 - [x] Run type check, production build, and verify the login flow.
 - [x] Commit and push the identity display fix.
+
+# Request submission 400 fix
+
+- [x] Inspect the request form payload and backend serializer validation.
+- [x] Align category and required fields between frontend and Django.
+- [x] Verify successful request creation and useful validation errors.
+- [x] Run frontend/backend checks and push the fix.

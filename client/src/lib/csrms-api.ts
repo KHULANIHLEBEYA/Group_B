@@ -113,7 +113,11 @@ async function request<T>(path: string, init: RequestInit = {}, retry = true): P
   if (response.status === 401 && retry && await refreshAccessToken()) return request<T>(path, init, false);
   const payload = await parseResponse(response);
   if (!response.ok) {
-    const message = typeof payload === "object" && payload && "detail" in payload ? String(payload.detail) : `CSRMS API request failed (${response.status})`;
+    const message = typeof payload === "object" && payload && "detail" in payload
+      ? String(payload.detail)
+      : typeof payload === "object" && payload
+        ? Object.entries(payload as Record<string, unknown>).map(([field, value]) => `${field}: ${Array.isArray(value) ? value.join(", ") : String(value)}`).join(" · ") || `CSRMS API request failed (${response.status})`
+        : `CSRMS API request failed (${response.status})`;
     throw new CsrmsApiError(message, response.status, payload);
   }
   return payload as T;

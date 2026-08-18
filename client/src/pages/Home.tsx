@@ -177,7 +177,7 @@ export default function Home() {
         </div>
       </main>
 
-      {showNewRequest && <NewRequestModal onClose={() => setShowNewRequest(false)} onSubmit={async (payload) => { try { const created = await csrmsApi.createRequest(payload); setLiveRequests((current) => [mapApiRequest(created), ...(current ?? requests)]); setShowNewRequest(false); toast("Request created and added to the CSRMS worklist."); } catch (error) { toast(error instanceof CsrmsApiError ? error.message : "Request could not be created."); } }} />}
+      {showNewRequest && <NewRequestModal onClose={() => setShowNewRequest(false)} onSubmit={async (payload) => { try { const { category, ...requestPayload } = payload; const created = await csrmsApi.createRequest({ ...requestPayload, category_name: category }); setLiveRequests((current) => [mapApiRequest(created), ...(current ?? requests)]); setShowNewRequest(false); toast("Request created and added to the CSRMS worklist."); } catch (error) { toast(error instanceof CsrmsApiError ? error.message : "Request could not be created."); } }} />}
       {selectedRequest && <RequestDetail request={selectedRequest} onClose={() => setSelectedRequest(null)} role={role} />}
       {showAuth && <AuthModal onClose={() => setShowAuth(false)} onLogin={handleLogin} apiError={apiError} />}
       <div className="fixed bottom-4 right-4 z-40 lg:hidden"><button onClick={() => handlePlaceholder("Use the desktop navigation to switch workspace sections.")} className="grid h-12 w-12 place-items-center rounded-full bg-[#102a35] text-white shadow-xl"><Menu className="h-5 w-5" /></button></div>

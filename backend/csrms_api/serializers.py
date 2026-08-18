@@ -28,12 +28,19 @@ class ServiceRequestSerializer(serializers.ModelSerializer):
     created_by = UserSerializer(read_only=True)
     assigned_to = UserSerializer(read_only=True)
     category = CategorySerializer(read_only=True)
-    category_id = serializers.PrimaryKeyRelatedField(source="category", queryset=Category.objects.all(), write_only=True)
+    category_id = serializers.PrimaryKeyRelatedField(source="category", queryset=Category.objects.all(), write_only=True, required=False)
+    category_name = serializers.CharField(write_only=True, required=False, allow_blank=False)
 
     class Meta:
         model = ServiceRequest
-        fields = ["id", "reference", "title", "description", "category", "category_id", "location", "priority", "status", "source", "created_by", "assigned_to", "created_at", "updated_at"]
+        fields = ["id", "reference", "title", "description", "category", "category_id", "category_name", "location", "priority", "status", "source", "created_by", "assigned_to", "created_at", "updated_at"]
         read_only_fields = ["reference", "created_by", "assigned_to", "created_at", "updated_at"]
+
+    def create(self, validated_data):
+        category_name = validated_data.pop("category_name", None)
+        if "category" not in validated_data and category_name:
+            validated_data["category"], _ = Category.objects.get_or_create(name=category_name)
+        return super().create(validated_data)
 
 
 class NotificationSerializer(serializers.ModelSerializer):
