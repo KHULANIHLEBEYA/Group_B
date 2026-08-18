@@ -53,3 +53,9 @@
 - [x] Guard analytics loading when the endpoint is not configured.
 - [x] Run frontend type check and production build.
 - [x] Verify the corrected frontend requests and commit the fix.
+
+# LAN CORS login fix
+
+- [x] Add http://192.168.0.250:3000 to Django CORS_ALLOWED_ORIGINS.
+- [x] Verify OPTIONS preflight for /api/auth/login/.
+- [x] Verify backend health and commit/push the configuration fix.
