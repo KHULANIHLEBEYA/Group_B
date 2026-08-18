@@ -38,20 +38,34 @@ jobs:
         run: pnpm build
 
   django:
-    name: Django checks (when backend is present)
-    if: ${{ hashFiles('**/manage.py') != '' }}
+    name: Django checks when backend is present
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Detect Django backend
+        id: detect
+        shell: bash
+        run: |
+          MANAGE_FILE=$(find . -name manage.py -print -quit)
+          if [ -n "$MANAGE_FILE" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+            echo "manage_file=$MANAGE_FILE" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "No manage.py found; Django checks will be skipped."
+          fi
+
       - name: Setup Python
+        if: steps.detect.outputs.present == 'true'
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
           cache: pip
 
       - name: Install backend dependencies
+        if: steps.detect.outputs.present == 'true'
         shell: bash
         run: |
           if [ -f requirements.txt ]; then
@@ -63,12 +77,8 @@ jobs:
           fi
 
       - name: Run Django system checks
+        if: steps.detect.outputs.present == 'true'
         shell: bash
         run: |
-          MANAGE_FILE=$(find . -name manage.py -print -quit)
-          if [ -z "$MANAGE_FILE" ]; then
-            echo "No manage.py found; Django checks were skipped."
-            exit 0
-          fi
-          cd "$(dirname "$MANAGE_FILE")"
+          cd "$(dirname "${{ steps.detect.outputs.manage_file }}")"
           python manage.py check
