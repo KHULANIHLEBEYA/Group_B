@@ -1,7 +1,8 @@
 from django.contrib import admin
-from .models import Category, Notification, ServiceRequest, TelemetryReading
+from .models import Category, Notification, ServiceRequest, TelemetryDevice, TelemetryReading
 
 admin.site.register(Category)
 admin.site.register(ServiceRequest)
 admin.site.register(Notification)
 admin.site.register(TelemetryReading)
+admin.site.register(TelemetryDevice)

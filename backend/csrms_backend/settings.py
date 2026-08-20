@@ -58,3 +58,10 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": ("rest_framework_simplejwt.authentication.JWTAuthentication",),
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
 }
+
+# CSRMS IoT alert thresholds. Override these per deployment when sensor calibration requires it.
+CSRMS_NETWORK_LATENCY_THRESHOLD_MS = 250
+CSRMS_NETWORK_FAILURE_COUNT = 3
+CSRMS_WATER_MOISTURE_THRESHOLD = 70
+CSRMS_FIRE_SMOKE_THRESHOLD = 40
+CSRMS_FIRE_TEMPERATURE_THRESHOLD = 45

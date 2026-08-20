@@ -1,3 +1,5 @@
+import hashlib
+
 from django.conf import settings
 from django.db import models
 
@@ -29,6 +31,7 @@ class ServiceRequest(models.Model):
         SYSTEM = "SYSTEM", "System"
 
     reference = models.CharField(max_length=24, unique=True, blank=True)
+    alert_key = models.CharField(max_length=180, null=True, blank=True)
     title = models.CharField(max_length=180)
     description = models.TextField()
     category = models.ForeignKey(Category, on_delete=models.PROTECT, related_name="requests")
@@ -36,7 +39,7 @@ class ServiceRequest(models.Model):
     priority = models.CharField(max_length=12, choices=Priority.choices, default=Priority.MEDIUM)
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.PENDING)
     source = models.CharField(max_length=8, choices=Source.choices, default=Source.USER)
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="service_requests")
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="service_requests")
     assigned_to = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="assigned_requests")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -62,6 +65,30 @@ class RequestUpdate(models.Model):
     author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="request_updates")
     comment = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
+
+
+class TelemetryDevice(models.Model):
+    device_id = models.CharField(max_length=120, unique=True)
+    key_hash = models.CharField(max_length=64)
+    sensor_type = models.CharField(max_length=24)
+    location = models.CharField(max_length=180, blank=True)
+    active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    @classmethod
+    def provision(cls, device_id, sensor_type, location=""):
+        import secrets
+        raw_key = secrets.token_urlsafe(32)
+        device = cls.objects.create(
+            device_id=device_id,
+            key_hash=hashlib.sha256(raw_key.encode()).hexdigest(),
+            sensor_type=sensor_type,
+            location=location,
+        )
+        return device, raw_key
+
+    def matches_key(self, raw_key):
+        return bool(raw_key) and hashlib.sha256(raw_key.encode()).hexdigest() == self.key_hash
 
 
 class TelemetryReading(models.Model):

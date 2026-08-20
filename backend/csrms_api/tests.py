@@ -5,7 +5,7 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from .models import Category, ServiceRequest, TelemetryReading
+from .models import Category, ServiceRequest, TelemetryDevice, TelemetryReading
 
 
 User = get_user_model()
@@ -194,8 +194,21 @@ class CSRMSAPITestCase(APITestCase):
         self.student.refresh_from_db()
         self.assertEqual(self.student.first_name, "Updated")
 
+    def test_telemetry_ingest_requires_valid_device_key(self):
+        device, raw_key = TelemetryDevice.provision("water-01", "water", "Residence C")
+        payload = {"value": 18.5, "device_id": device.device_id}
+
+        missing_key = self.client.post("/api/telemetry/water/", payload, format="json")
+        wrong_key = self.client.post("/api/telemetry/water/", payload, format="json", HTTP_X_DEVICE_KEY="wrong-key")
+        valid_key = self.client.post("/api/telemetry/water/", payload, format="json", HTTP_X_DEVICE_KEY=raw_key)
+
+        self.assertEqual(missing_key.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(wrong_key.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(valid_key.status_code, status.HTTP_201_CREATED)
+
     def test_telemetry_ingest_and_history(self):
         self.login("staff01")
+        device, raw_key = TelemetryDevice.provision("water-01", "water", "Residence C")
         timestamp = timezone.now() - timedelta(minutes=2)
 
         ingest_response = self.client.post(
@@ -204,9 +217,10 @@ class CSRMSAPITestCase(APITestCase):
                 "value": 18.5,
                 "timestamp": timestamp.isoformat(),
                 "location": "Residence C",
-                "device_id": "water-01",
+                "device_id": device.device_id,
             },
             format="json",
+            HTTP_X_DEVICE_KEY=raw_key,
         )
         history_response = self.client.get("/api/telemetry/history/?range=live")
 
@@ -214,6 +228,34 @@ class CSRMSAPITestCase(APITestCase):
         self.assertEqual(history_response.status_code, status.HTTP_200_OK)
         self.assertTrue(any(item["value"] == 18.5 for item in history_response.data["water"]))
         self.assertTrue(TelemetryReading.objects.filter(device_id="water-01").exists())
+
+    def test_water_threshold_creates_one_deduplicated_system_request(self):
+        device, raw_key = TelemetryDevice.provision("water-alert-01", "water", "Residence C")
+        payload = {"value": 80, "device_id": device.device_id}
+        first = self.client.post("/api/telemetry/water/", payload, format="json", HTTP_X_DEVICE_KEY=raw_key)
+        second = self.client.post("/api/telemetry/water/", payload, format="json", HTTP_X_DEVICE_KEY=raw_key)
+        alerts = ServiceRequest.objects.filter(source=ServiceRequest.Source.SYSTEM, alert_key__startswith="iot:water-alert-01")
+        self.assertEqual(first.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(second.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(alerts.count(), 1)
+        self.assertEqual(alerts.first().priority, ServiceRequest.Priority.HIGH)
+
+    def test_fire_threshold_creates_critical_system_request(self):
+        device, raw_key = TelemetryDevice.provision("fire-alert-01", "fire", "Science Block")
+        response = self.client.post("/api/telemetry/fire/", {"smoke": 55, "temperature": 30, "device_id": device.device_id}, format="json", HTTP_X_DEVICE_KEY=raw_key)
+        alert = ServiceRequest.objects.get(alert_key__startswith="iot:fire-alert-01")
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(alert.priority, ServiceRequest.Priority.CRITICAL)
+
+    def test_network_threshold_requires_three_consecutive_failures(self):
+        device, raw_key = TelemetryDevice.provision("network-alert-01", "network", "Core network room")
+        for _ in range(2):
+            response = self.client.post("/api/telemetry/network/", {"latency_ms": 300, "device_id": device.device_id}, format="json", HTTP_X_DEVICE_KEY=raw_key)
+            self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertFalse(ServiceRequest.objects.filter(alert_key__startswith="iot:network-alert-01").exists())
+        response = self.client.post("/api/telemetry/network/", {"latency_ms": 300, "device_id": device.device_id}, format="json", HTTP_X_DEVICE_KEY=raw_key)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(ServiceRequest.objects.filter(alert_key__startswith="iot:network-alert-01").exists())
 
     def test_telemetry_history_returns_separate_sensor_series(self):
         now = timezone.now()

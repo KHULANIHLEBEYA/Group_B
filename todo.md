@@ -107,3 +107,11 @@
 - [x] Add role-aware permissions and serializers for the new workflows.
 - [x] Add endpoint tests and update CI test evidence.
 - [x] Run full Django/frontend validation and push the endpoint update.
+
+# Telemetry security and IoT alerts
+
+- [x] Define device-key storage, sensor validation, and threshold rules.
+- [x] Add per-device key authentication for telemetry ingestion.
+- [x] Add threshold evaluation and deduplicated system request creation.
+- [x] Add tests for invalid keys, invalid sensors, thresholds, and deduplication.
+- [x] Run full Django/frontend validation and push the IoT update.
