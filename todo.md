@@ -123,3 +123,17 @@
 - [x] Enforce request, dashboard, category, user, notification, and telemetry access boundaries.
 - [x] Add regression tests for cross-user reads, edits, status changes, and role restrictions.
 - [x] Run full Django/frontend validation and push the RBAC update.
+
+# Production API URL and CORS verification
+
+- [ ] Inspect frontend production API URL configuration and backend CORS settings.
+- [ ] Confirm the production backend URL and deployed frontend origin.
+- [ ] Apply safe configuration updates without committing secrets.
+- [ ] Verify CORS preflight, backend health, frontend build, and repository state.
+
+# Pull-ready production configuration template
+
+- [x] Inspect repository layout and existing environment templates.
+- [x] Add a safe frontend production environment template and deployment notes.
+- [x] Validate configuration safety and the frontend build.
+- [x] Commit and push the configuration template.
