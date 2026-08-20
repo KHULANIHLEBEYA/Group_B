@@ -115,6 +115,14 @@ class CSRMSAPITestCase(APITestCase):
         self.assertIn(own_request.id, ids)
         self.assertNotIn(other_request.id, ids)
 
+    def test_student_cannot_change_workflow_fields_on_own_request(self):
+        request = self.create_request(self.student)
+        self.login()
+        detail_response = self.client.put(f"/api/requests/{request.id}/", {"title": "Changed", "description": "Changed", "status": ServiceRequest.Status.RESOLVED}, format="json")
+        status_response = self.client.patch(f"/api/requests/{request.id}/status/", {"status": ServiceRequest.Status.IN_PROGRESS}, format="json")
+        self.assertEqual(detail_response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(status_response.status_code, status.HTTP_403_FORBIDDEN)
+
     def test_student_cannot_read_or_update_another_students_request(self):
         other_request = self.create_request(self.other_student)
         self.login()
@@ -128,6 +136,23 @@ class CSRMSAPITestCase(APITestCase):
 
         self.assertEqual(detail_response.status_code, status.HTTP_404_NOT_FOUND)
         self.assertEqual(status_response.status_code, status.HTTP_403_FORBIDDEN)
+        history_response = self.client.get(f"/api/requests/{other_request.id}/history/")
+        updates_response = self.client.post(f"/api/requests/{other_request.id}/updates/", {"comment": "No access"}, format="json")
+        self.assertEqual(history_response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(updates_response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_student_dashboard_only_counts_owned_requests(self):
+        self.create_request(self.student)
+        self.create_request(self.other_student)
+        self.login()
+        response = self.client.get("/api/dashboard/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["pending"], 1)
+
+    def test_student_cannot_view_telemetry_history(self):
+        self.login()
+        response = self.client.get("/api/telemetry/history/?range=live")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_staff_can_view_all_requests_and_update_status(self):
         request = self.create_request(self.student)

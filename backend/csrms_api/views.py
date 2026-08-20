@@ -6,6 +6,7 @@ from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import generics, permissions, status
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
@@ -15,6 +16,28 @@ from .models import Category, Notification, RequestUpdate, ServiceRequest, Telem
 from .serializers import CategorySerializer, NotificationSerializer, RequestUpdateSerializer, ServiceRequestSerializer, TelemetryReadingSerializer, UserCreateSerializer, UserSerializer
 
 User = get_user_model()
+
+
+def is_admin_user(user):
+    return bool(user and user.is_authenticated and (user.is_superuser or user.is_staff))
+
+
+def is_staff_user(user):
+    return bool(user and user.is_authenticated and (is_admin_user(user) or user.groups.filter(name__iexact="staff").exists()))
+
+
+def can_operate_request(user, item):
+    return is_admin_user(user) or (is_staff_user(user) and (item.assigned_to_id in {None, user.id} or item.source == ServiceRequest.Source.SYSTEM))
+
+
+class IsStaffOrAdmin(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return is_staff_user(request.user)
+
+
+class IsAdminRole(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return is_admin_user(request.user)
 
 
 class LoginSerializer(TokenObtainPairSerializer):
@@ -44,12 +67,14 @@ class RegisterView(generics.CreateAPIView):
 
 
 class LogoutView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
     def post(self, request):
         return Response({"detail": "Signed out successfully."}, status=status.HTTP_204_NO_CONTENT)
 
 
 class UserListView(generics.ListCreateAPIView):
-    permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
+    permission_classes = [permissions.IsAuthenticated, IsAdminRole]
     queryset = User.objects.order_by("username")
     serializer_class = UserSerializer
 
@@ -58,7 +83,7 @@ class UserListView(generics.ListCreateAPIView):
 
 
 class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
-    permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
+    permission_classes = [permissions.IsAuthenticated, IsAdminRole]
     queryset = User.objects.order_by("username")
     serializer_class = UserSerializer
 
@@ -69,8 +94,14 @@ class MeView(APIView):
 
 
 class DashboardView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
     def get(self, request):
         qs = ServiceRequest.objects.all()
+        if not is_admin_user(request.user) and not is_staff_user(request.user):
+            qs = qs.filter(created_by=request.user)
+        elif is_staff_user(request.user) and not is_admin_user(request.user):
+            qs = qs.filter(assigned_to=request.user) | qs.filter(source=ServiceRequest.Source.SYSTEM)
         return Response({
             "pending": qs.filter(status=ServiceRequest.Status.PENDING).count(),
             "assigned": qs.filter(status=ServiceRequest.Status.ASSIGNED).count(),
@@ -80,15 +111,17 @@ class DashboardView(APIView):
 
 
 class CategoryListView(generics.ListAPIView):
+    permission_classes = [permissions.IsAuthenticated]
     queryset = Category.objects.filter(active=True)
     serializer_class = CategorySerializer
 
 
 class RequestListCreateView(generics.ListCreateAPIView):
+    permission_classes = [permissions.IsAuthenticated]
     serializer_class = ServiceRequestSerializer
 
     def get_queryset(self):
-        if self.request.user.is_staff:
+        if is_staff_user(self.request.user):
             return ServiceRequest.objects.select_related("category", "created_by", "assigned_to").all()
         return ServiceRequest.objects.select_related("category", "created_by", "assigned_to").filter(created_by=self.request.user)
 
@@ -97,20 +130,33 @@ class RequestListCreateView(generics.ListCreateAPIView):
 
 
 class RequestDetailView(generics.RetrieveUpdateAPIView):
+    permission_classes = [permissions.IsAuthenticated]
     serializer_class = ServiceRequestSerializer
 
     def get_queryset(self):
         queryset = ServiceRequest.objects.select_related("category", "created_by", "assigned_to")
-        if self.request.user.is_staff:
+        if is_staff_user(self.request.user):
             return queryset
         return queryset.filter(created_by=self.request.user)
 
+    def update(self, request, *args, **kwargs):
+        item = self.get_object()
+        allowed_fields = {"title", "description", "location", "priority", "category_id", "category_name"}
+        if not (is_admin_user(request.user) or can_operate_request(request.user, item)) and set(request.data) - allowed_fields:
+            raise PermissionDenied("Students may not edit workflow or assignment fields.")
+        return super().update(request, *args, **kwargs)
+
+    def perform_update(self, serializer):
+        serializer.save()
+
 
 class RequestAssignView(APIView):
-    permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
+    permission_classes = [permissions.IsAuthenticated, IsStaffOrAdmin]
 
     def post(self, request, pk):
         item = get_object_or_404(ServiceRequest, pk=pk)
+        if not is_admin_user(request.user) and item.assigned_to_id not in {None, request.user.id} and item.source != ServiceRequest.Source.SYSTEM:
+            return Response({"detail": "You do not have permission to assign this request."}, status=status.HTTP_403_FORBIDDEN)
         assignee = get_object_or_404(User, pk=request.data.get("assigned_to"))
         item.assigned_to = assignee
         item.status = ServiceRequest.Status.ASSIGNED
@@ -120,9 +166,11 @@ class RequestAssignView(APIView):
 
 
 class RequestUpdatesView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
     def post(self, request, pk):
         item = get_object_or_404(ServiceRequest, pk=pk)
-        if not request.user.is_staff and item.created_by_id != request.user.id:
+        if not (item.created_by_id == request.user.id or can_operate_request(request.user, item)):
             return Response({"detail": "You do not have permission to update this request."}, status=status.HTTP_403_FORBIDDEN)
         serializer = RequestUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -131,26 +179,31 @@ class RequestUpdatesView(APIView):
 
 
 class RequestHistoryView(generics.ListAPIView):
+    permission_classes = [permissions.IsAuthenticated]
     serializer_class = RequestUpdateSerializer
 
     def get_queryset(self):
         item = get_object_or_404(ServiceRequest, pk=self.kwargs["pk"])
-        if not self.request.user.is_staff and item.created_by_id != self.request.user.id:
-            return RequestUpdate.objects.none()
+        if not (item.created_by_id == self.request.user.id or can_operate_request(self.request.user, item)):
+            raise PermissionDenied("You do not have permission to view this request history.")
         return item.updates.select_related("author").order_by("created_at")
 
 
 class RequestStatusView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
     def patch(self, request, pk):
         item = get_object_or_404(ServiceRequest, pk=pk)
-        if not request.user.is_staff and item.created_by_id != request.user.id:
-            return Response({"detail": "You do not have permission to update this request."}, status=status.HTTP_403_FORBIDDEN)
-        item.status = request.data.get("status", item.status)
+        requested_status = request.data.get("status", item.status)
+        if not (is_admin_user(request.user) or can_operate_request(request.user, item) or (item.created_by_id == request.user.id and requested_status == ServiceRequest.Status.CANCELLED)):
+            return Response({"detail": "You do not have permission to change this request status."}, status=status.HTTP_403_FORBIDDEN)
+        item.status = requested_status
         item.save(update_fields=["status", "updated_at"])
         return Response(ServiceRequestSerializer(item).data)
 
 
 class NotificationListView(generics.ListAPIView):
+    permission_classes = [permissions.IsAuthenticated]
     serializer_class = NotificationSerializer
 
     def get_queryset(self):
@@ -158,6 +211,8 @@ class NotificationListView(generics.ListAPIView):
 
 
 class TelemetryHistoryView(APIView):
+    permission_classes = [permissions.IsAuthenticated, IsStaffOrAdmin]
+
     def get(self, request):
         range_name = request.query_params.get("range", "live")
         hours = {"live": 12, "24_hours": 24, "7_days": 24 * 7}.get(range_name, 12)
