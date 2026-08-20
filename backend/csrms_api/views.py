@@ -10,8 +10,8 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
 
-from .models import Category, Notification, ServiceRequest, TelemetryReading
-from .serializers import CategorySerializer, NotificationSerializer, ServiceRequestSerializer, TelemetryReadingSerializer, UserSerializer
+from .models import Category, Notification, RequestUpdate, ServiceRequest, TelemetryReading
+from .serializers import CategorySerializer, NotificationSerializer, RequestUpdateSerializer, ServiceRequestSerializer, TelemetryReadingSerializer, UserCreateSerializer, UserSerializer
 
 User = get_user_model()
 
@@ -40,6 +40,26 @@ class RegisterView(generics.CreateAPIView):
             return Response({"detail": "username already exists"}, status=status.HTTP_400_BAD_REQUEST)
         user = User.objects.create_user(username=username, password=password, email=request.data.get("email", ""), first_name=request.data.get("first_name", ""), last_name=request.data.get("last_name", ""))
         return Response(UserSerializer(user).data, status=status.HTTP_201_CREATED)
+
+
+class LogoutView(APIView):
+    def post(self, request):
+        return Response({"detail": "Signed out successfully."}, status=status.HTTP_204_NO_CONTENT)
+
+
+class UserListView(generics.ListCreateAPIView):
+    permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
+    queryset = User.objects.order_by("username")
+    serializer_class = UserSerializer
+
+    def get_serializer_class(self):
+        return UserCreateSerializer if self.request.method == "POST" else UserSerializer
+
+
+class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
+    permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
+    queryset = User.objects.order_by("username")
+    serializer_class = UserSerializer
 
 
 class MeView(APIView):
@@ -83,6 +103,40 @@ class RequestDetailView(generics.RetrieveUpdateAPIView):
         if self.request.user.is_staff:
             return queryset
         return queryset.filter(created_by=self.request.user)
+
+
+class RequestAssignView(APIView):
+    permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
+
+    def post(self, request, pk):
+        item = get_object_or_404(ServiceRequest, pk=pk)
+        assignee = get_object_or_404(User, pk=request.data.get("assigned_to"))
+        item.assigned_to = assignee
+        item.status = ServiceRequest.Status.ASSIGNED
+        item.save(update_fields=["assigned_to", "status", "updated_at"])
+        Notification.objects.create(user=assignee, title="Request assigned", message=f"{item.reference}: {item.title}")
+        return Response(ServiceRequestSerializer(item).data)
+
+
+class RequestUpdatesView(APIView):
+    def post(self, request, pk):
+        item = get_object_or_404(ServiceRequest, pk=pk)
+        if not request.user.is_staff and item.created_by_id != request.user.id:
+            return Response({"detail": "You do not have permission to update this request."}, status=status.HTTP_403_FORBIDDEN)
+        serializer = RequestUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        update = serializer.save(request=item, author=request.user)
+        return Response(RequestUpdateSerializer(update).data, status=status.HTTP_201_CREATED)
+
+
+class RequestHistoryView(generics.ListAPIView):
+    serializer_class = RequestUpdateSerializer
+
+    def get_queryset(self):
+        item = get_object_or_404(ServiceRequest, pk=self.kwargs["pk"])
+        if not self.request.user.is_staff and item.created_by_id != self.request.user.id:
+            return RequestUpdate.objects.none()
+        return item.updates.select_related("author").order_by("created_at")
 
 
 class RequestStatusView(APIView):

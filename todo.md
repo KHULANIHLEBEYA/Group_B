@@ -99,3 +99,11 @@
 - [x] Run the full Django test suite and inspect failures.
 - [x] Update CI to run python manage.py test.
 - [x] Commit and push the Q4 test evidence update.
+
+# Missing backend endpoints
+
+- [x] Map frontend API client methods to missing Django routes.
+- [x] Add logout, users, assignment, updates, and request history endpoints.
+- [x] Add role-aware permissions and serializers for the new workflows.
+- [x] Add endpoint tests and update CI test evidence.
+- [x] Run full Django/frontend validation and push the endpoint update.

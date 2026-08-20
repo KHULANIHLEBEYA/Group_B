@@ -1,6 +1,6 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
-from .models import Category, Notification, ServiceRequest, TelemetryReading
+from .models import Category, Notification, RequestUpdate, ServiceRequest, TelemetryReading
 
 User = get_user_model()
 
@@ -16,6 +16,26 @@ class UserSerializer(serializers.ModelSerializer):
         if obj.is_superuser or obj.is_staff:
             return "ADMIN"
         return "STAFF" if obj.groups.filter(name__iexact="staff").exists() else "STUDENT"
+
+
+class UserCreateSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True, min_length=8)
+
+    class Meta:
+        model = User
+        fields = ["id", "username", "email", "first_name", "last_name", "password"]
+
+    def create(self, validated_data):
+        return User.objects.create_user(**validated_data)
+
+
+class RequestUpdateSerializer(serializers.ModelSerializer):
+    author = UserSerializer(read_only=True)
+
+    class Meta:
+        model = RequestUpdate
+        fields = ["id", "comment", "author", "created_at"]
+        read_only_fields = ["id", "author", "created_at"]
 
 
 class CategorySerializer(serializers.ModelSerializer):

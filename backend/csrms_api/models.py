@@ -57,6 +57,13 @@ class Notification(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
 
+class RequestUpdate(models.Model):
+    request = models.ForeignKey(ServiceRequest, on_delete=models.CASCADE, related_name="updates")
+    author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="request_updates")
+    comment = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+
 class TelemetryReading(models.Model):
     sensor_type = models.CharField(max_length=24)
     recorded_at = models.DateTimeField()

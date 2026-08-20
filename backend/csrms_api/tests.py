@@ -146,6 +146,54 @@ class CSRMSAPITestCase(APITestCase):
         request.refresh_from_db()
         self.assertEqual(request.status, ServiceRequest.Status.IN_PROGRESS)
 
+    def test_logout_endpoint_accepts_authenticated_session(self):
+        self.login()
+        response = self.client.post("/api/auth/logout/", {"refresh": "test-refresh"}, format="json")
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+
+    def test_admin_can_list_and_create_users(self):
+        self.login("staff01")
+        list_response = self.client.get("/api/users/")
+        create_response = self.client.post(
+            "/api/users/",
+            {"username": "newstaff", "email": "newstaff@example.com", "password": "StrongPass123!"},
+            format="json",
+        )
+        self.assertEqual(list_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(create_response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(User.objects.filter(username="newstaff").exists())
+
+    def test_student_cannot_manage_users(self):
+        self.login()
+        response = self.client.get("/api/users/")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_staff_can_assign_request_and_assignment_creates_notification(self):
+        request = self.create_request(self.student)
+        self.login("staff01")
+        response = self.client.post(f"/api/requests/{request.id}/assign/", {"assigned_to": self.staff.id}, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        request.refresh_from_db()
+        self.assertEqual(request.assigned_to, self.staff)
+        self.assertEqual(request.status, ServiceRequest.Status.ASSIGNED)
+        self.assertTrue(self.staff.notifications.filter(title="Request assigned").exists())
+
+    def test_request_updates_and_history_are_available_to_owner(self):
+        request = self.create_request(self.student)
+        self.login()
+        update_response = self.client.post(f"/api/requests/{request.id}/updates/", {"comment": "I added more detail."}, format="json")
+        history_response = self.client.get(f"/api/requests/{request.id}/history/")
+        self.assertEqual(update_response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(history_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(history_response.data[0]["comment"], "I added more detail.")
+
+    def test_staff_can_update_user_and_student_cannot_access_user_management(self):
+        self.login("staff01")
+        response = self.client.patch(f"/api/users/{self.student.id}/", {"first_name": "Updated"}, format="json")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.student.refresh_from_db()
+        self.assertEqual(self.student.first_name, "Updated")
+
     def test_telemetry_ingest_and_history(self):
         self.login("staff01")
         timestamp = timezone.now() - timedelta(minutes=2)
