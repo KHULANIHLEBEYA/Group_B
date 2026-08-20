@@ -118,8 +118,8 @@
 
 # RBAC and object permissions
 
-- [ ] Map Student, Staff, and Admin access rules across all protected views.
-- [ ] Add reusable role and ownership permission helpers.
-- [ ] Enforce request, dashboard, category, user, notification, and telemetry access boundaries.
-- [ ] Add regression tests for cross-user reads, edits, status changes, and role restrictions.
-- [ ] Run full Django/frontend validation and push the RBAC update.
+- [x] Map Student, Staff, and Admin access rules across all protected views.
+- [x] Add reusable role and ownership permission helpers.
+- [x] Enforce request, dashboard, category, user, notification, and telemetry access boundaries.
+- [x] Add regression tests for cross-user reads, edits, status changes, and role restrictions.
+- [x] Run full Django/frontend validation and push the RBAC update.
