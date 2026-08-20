@@ -91,3 +91,11 @@
 - [x] Make logout show an explicit signed-out state without auto-selecting a demo identity.
 - [x] Verify registration, login, logout, and demo transitions.
 - [x] Run frontend checks and push the authentication UX fix.
+
+# Django Q4 API test suite
+
+- [x] Define authentication, request, permission, and telemetry test cases.
+- [x] Implement Django API tests with isolated test data.
+- [x] Run the full Django test suite and inspect failures.
+- [x] Update CI to run python manage.py test.
+- [x] Commit and push the Q4 test evidence update.

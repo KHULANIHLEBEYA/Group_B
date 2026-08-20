@@ -76,13 +76,20 @@ class RequestListCreateView(generics.ListCreateAPIView):
 
 
 class RequestDetailView(generics.RetrieveUpdateAPIView):
-    queryset = ServiceRequest.objects.select_related("category", "created_by", "assigned_to")
     serializer_class = ServiceRequestSerializer
+
+    def get_queryset(self):
+        queryset = ServiceRequest.objects.select_related("category", "created_by", "assigned_to")
+        if self.request.user.is_staff:
+            return queryset
+        return queryset.filter(created_by=self.request.user)
 
 
 class RequestStatusView(APIView):
     def patch(self, request, pk):
         item = get_object_or_404(ServiceRequest, pk=pk)
+        if not request.user.is_staff and item.created_by_id != request.user.id:
+            return Response({"detail": "You do not have permission to update this request."}, status=status.HTTP_403_FORBIDDEN)
         item.status = request.data.get("status", item.status)
         item.save(update_fields=["status", "updated_at"])
         return Response(ServiceRequestSerializer(item).data)
